@@ -51,7 +51,8 @@ template <class T>
 struct check;
 
 template <> struct check<cv>{
-  static void do_it(Sample& s, StaticJsonDocument<120>& jpara, bool& para, void (*action)(bool&)){ 
+  
+  static void ckeck_it(Sample& s, StaticJsonDocument<120>& jpara, bool& para, void (*action)(bool&)){ 
     float dummy = jpara["field_cutoff"];
     if (s.m_current * s.m_voltage < dummy * s.m_voltage) action(para);
     return;    
@@ -64,17 +65,49 @@ template <> struct check<cv>{
                   } 
   static void apply (StaticJsonDocument<120>& json_instruction_){
           pinMode(22, OUTPUT);
-          digitalWrite(22, HIGH);   //set pin 8 HIG*/   
+          digitalWrite(22, HIGH);     
           float applied_voltage = json_instruction_["applied_field"];
           write_to_dac(96, applied_voltage);
           pinMode(50, OUTPUT);
-          digitalWrite(50, HIGH);   //set pin 8 HIG*/   
+          digitalWrite(50, HIGH);      
           return;
+  }
+  static void run(StaticJsonDocument<120>& json_arrived_){
+         xTaskCreate( taskMeassure, "Meassureing"   ,  256,  NULL, 3,   &taskMeassureHandle ); //Task Handle
+         xTaskCreate( check<cv>::taskRun     , "Runing the job",  256,  NULL,  3,   &taskRunHandle );
+	 }
+  static void taskRun(StaticJsonDocument<120>& json_arrived_){
+  	check<cv>::apply(json_instruction);
+        json_message["msg"]="jobstarted";
+	json_message["type"]="message";
+	serializeJson(json_message, Serial); 
+  	for (;;){
+          if (taskStarted && !taskFinished){
+                                        check<cv>::do_it(sample,json_instruction,taskFinished,&check<cv>::finished);
+                                        if (!taskFinished) 
+                                               sendData(json_data);
+                                        else                
+                                               sendMessageFinished();
+          }   
+       }
+  }
+
+void removeTasks(void *any)
+{
+  json_data["current"] = 0.0;
+  json_data["voltage"] = 0.0;
+  sample.m_voltage=0.0;
+  sample.m_current=0.0;
+  sample.m_time_interval=0.0;
+ // vTaskDelete(taskMeassureHandle);
+ // vTaskDelete(taskRunHandle);
+       
+
   }
 };
 
 template <> struct check<cc>{
-  static void do_it(Sample& s, StaticJsonDocument<120>& jpara, bool& para, void (*action)(bool&)){ 
+  static void check_it(Sample& s, StaticJsonDocument<120>& jpara, bool& para, void (*action)(bool&)){ 
     float dummy = jpara["field_cutoff"];
     if (s.m_voltage * s.m_current > dummy * s.m_current) action(para);
     }
@@ -167,8 +200,11 @@ void taskControl( void *pvParameters )  // This is a Task.
     //  xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;
     // Now set up two Tasks to run independently.
      if ( command_arrived && !taskStarted && !taskFinished ){  
-        xTaskCreate( taskMeassure, "Meassureing"   ,  256,  NULL, 3,   &taskMeassureHandle ); //Task Handle
-        xTaskCreate( taskRun     , "Runing the job",  256,  NULL,  3,   &taskRunHandle     ); //Task Handle    
+        if (json_ins_arrived["command2"] == "cv"){
+        //xTaskCreate( taskMeassure, "Meassureing"   ,  256,  NULL, 3,   &taskMeassureHandle ); //Task Handle
+        //xTaskCreate( taskRun     , "Runing the job",  256,  NULL,  3,   &taskRunHandle     ); //Task Handle    
+	  check<cv>::run(json_ins_arrived);
+	}
         taskStarted = true; 
         command_arrived = false;          
         Serial.print("Started!!");      
@@ -234,48 +270,6 @@ float time = 0;
   }
 }
 
-void taskRun( void *pvParameters __attribute__((unused)) )  // This is a Task.
-{
-   if (json_instruction["command2"] == "cv")  
-                   check<cv>::apply(json_instruction);
-                                               
-   if (json_instruction["command2"] == "cc")  
-                   check<cc>::apply(json_instruction);
-   
-  json_message["msg"]="jobstarted";
-  json_message["type"]="message";
-  serializeJson(json_message, Serial); 
-  for (;;){
-       // serializeJson(json_instruction, Serial);  
-          if (taskStarted && !taskFinished){
-                                           if (json_instruction["command2"] == "cv")   
-                                              check<cv>::do_it(sample,json_instruction,taskFinished,&check<cv>::finished);
-                                                 
-                                           if (json_instruction["command2"] == "cc") 
-                                               check<cc>::do_it(sample,json_instruction,taskFinished,&check<cc>::finished);
-                                            
-                                           if (!taskFinished) 
-                                               sendData(json_data);
-                                           else                
-                                               sendMessageFinished();
-                                                
-          }   
-         // time=0  ;
-  }
-}
-
-void removeTasks(void *any)
-{
-  json_data["current"] = 0.0;
-  json_data["voltage"] = 0.0;
-  sample.m_voltage=0.0;
-  sample.m_current=0.0;
-  sample.m_time_interval=0.0;
- // vTaskDelete(taskMeassureHandle);
- // vTaskDelete(taskRunHandle);
-  
-return;
-}
 
 void cellOff()
 {
