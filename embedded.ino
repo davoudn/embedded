@@ -123,6 +123,7 @@ template <> struct Procedure<cv>: public ProcHandle {
   void check_it(){ 
           float dummy = j_instruction["field_cutoff"];
           if (m_sample.m_current * m_sample.m_voltage < dummy * m_sample.m_voltage) done();
+          
           return;    
   }
 
