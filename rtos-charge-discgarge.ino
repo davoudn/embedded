@@ -22,7 +22,7 @@ void cellOff();
 void taskListen( void *pvParameters );
 
 void write_to_dac(int dac_id, float value){
-  // transmit to device #4
+  // transmit to device davoud 22222 
   int dummy = (value/10.0)*4095;
   byte myBytes[2];
   myBytes[0] = dummy/256;
