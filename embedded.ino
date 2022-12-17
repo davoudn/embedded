@@ -174,20 +174,10 @@ template <> struct Procedure<cv>: public ProcHandle {
   };
 
  arx::vector<ProcHandle*> co;
-// the setup function runs once when you press reset or power the board
 void setup() {
-  
-  //vector < >
- 
-  // initialize serial communication at 9600 bits per second:
   Serial.begin(9600);
-  
-  while (!Serial) {
-    ; // wait for serial port to connect. Needed for native USB, on LEONARDO, MICRO, YUN, and other 32u4 based boards.
-  }
-  // Semaphores are useful to stop a Task proceeding, where it should be paused to wait,
-  // because it is sharing a resource, such as the Serial port.
-  // Semaphores should only be used whilst the scheduler is running, but we can set it up here.
+  while (!Serial) {; }
+
   if ( xSerialSemaphore == NULL )  // Check to confirm that the Serial Semaphore has not already been created.
   {
     xSerialSemaphore = xSemaphoreCreateMutex();  // Create a mutex semaphore we will use to manage the Serial Port
@@ -195,23 +185,8 @@ void setup() {
       xSemaphoreGive( ( xSerialSemaphore ) );  // Make the Serial Port available for use, by "Giving" the Semaphore.
   }
 
-   //Now set up two Tasks to run independently.
-   xTaskCreate(
-    taskControl
-    ,  "Control"  // A name just for humans
-    ,  256  // This stack size can be checked & adjusted by reading the Stack Highwater
-    ,  NULL //Parameters for the task
-    ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  NULL ); //Task Handle
-   //Now set up two Tasks to run independently.
-   xTaskCreate(
-    taskListen
-    ,  "Listen"  // A name just for humans
-    ,  256  // This stack size can be checked & adjusted by reading the Stack Highwater
-    ,  NULL //Parameters for the task
-    ,  3  // Priority, with 3 (configMAX_PRIORITIES - 1) being the highest, and 0 being the lowest.
-    ,  NULL ); //Task Handle
-  // Now the Task scheduler, which takes over control of scheduling individual Tasks, is automatically started.
+   xTaskCreate( taskControl  ,  "Control",  256,  NULL,  3,  NULL ); //Task Handle
+   xTaskCreate( taskListen   ,  "Listen",  256,  NULL,  3,  NULL ); //Task Handle
 }
 
 void loop(){}
@@ -224,14 +199,11 @@ void taskControl( void *pvParameters )  // This is a Task.
   int count =0;
   for (;;){
     //  xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;
-    // Now set up two Tasks to run independently.
      if ( command_arrived  && co.size()==0 ){  
         if ( json_ins_arrived["command2"] == "cv" ){
             Procedure<cv>* proc_handle_cv = new  Procedure<cv> (json_ins_arrived);
             co.push_back(proc_handle_cv);
             proc_handle_cv->run();
-        //xTaskCreate( taskMeassure, "Meassureing"   ,  256,  NULL, 3,   &taskMeassureHandle ); //Task Handle
-        //xTaskCreate( taskRun     , "Runing the job",  256,  NULL,  3,   &taskRunHandle     ); //Task Handle    
         command_arrived = false;
        	}
         //taskStarted = true; 
@@ -241,8 +213,6 @@ void taskControl( void *pvParameters )  // This is a Task.
             else {Serial.print("A task is running, first cancel the current task!!!");}
      }// Now free or "Give" the Serial         
      else if(!1 ) {
-          //removeTasks(NULL);
-         // removeTasks(taskRunHandle);
        }// Now free or "Give" the Serial                        
      } 
 }
