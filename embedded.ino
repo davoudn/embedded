@@ -58,12 +58,67 @@ struct cc{};
 template <class T>
 struct Procedure;
 
-template <> struct Procedure<cv> {
+ /* ----------------------------      Static functions      --------------------------------- */
+template <class PROCTYPE>
+ struct Base {
+   static void taskApplyCheck(PROCTYPE* prc){
+        prc->apply();
+        for (;;){
+          if (prc->m_flags.m_taskStarted && !prc->m_flags.m_taskFinished){
+             prc->check_it();
+             if (!prc->m_flags.m_taskFinished)
+                prc->sendData();
+             else
+                prc->sendMessageFinished();
+          }
+       }
+  }
+
+  static void taskMeassure(PROCTYPE *prc){
+     float averageValue = 500.0;
+     int meassure_interval = 2000;
+     long int sensorValue = 0;  // variable to store the sensor value read
+     long int sensorValue1 = 0;
+
+     float current_voltage = 0.0;
+     float voltage_voltage=0.0;
+     float time = 0;
+
+     for (;;) {
+  //  if (time >= meassure_interval ){
+       sensorValue = 0;
+       sensorValue1 = 0;
+       for (int i = 0; i < averageValue; i++) {
+           sensorValue += analogRead(A0);
+           sensorValue1+= analogRead(A1);
+           delay(0.5);
+       }
+       sensorValue = sensorValue / averageValue;
+       current_voltage = sensorValue * 5.0 / 1024.0;
+       prc->m_sample.m_current = (current_voltage - 2.5) / 0.066;
+       prc->m_sample.m_voltage = 5.0 * sensorValue1 / averageValue / 1024.0; //
+       prc->m_sample.m_time_interval = time*0.001; // in seconds!!
+   // }
+     }
+  }
+ };
+
+struct  ProcHandle {
+  StaticJsonDocument<120> j_status;
+ 
+};
+
+template <> struct Procedure<cv>: public ProcHandle {
    StaticJsonDocument<120> j_instruction, j_data, j_message;
    Sample m_sample;
    Flags  m_flags;
   Procedure (StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_) {}
   ~Procedure(){}
+
+ void run(){
+         xTaskCreate(Base<Procedure<cv>>::taskMeassure, "Meassureing"   ,  256,  &this->m_sample, 3,  NULL ); //Task Handle
+         xTaskCreate(Base<Procedure<cv>>::taskApplyCheck   , "Runing the job",  256,  &this->m_flags , 3,   NULL );
+  }
 
   void check_it(){ 
           float dummy = j_instruction["field_cutoff"];
@@ -106,109 +161,24 @@ template <> struct Procedure<cv> {
          j_message["msg"] = "jobdone"   ;  
          serializeJson(j_message, Serial);    
          Serial.print("#\n");    
-                                                           //                         xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.
-                                                           //   }            
+                                                           //                         xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for other                                                      //   }            
     }
-  };
-
-template <typename PROCTYPE>
-struct  Base {
-  private:
-  
-    PROCTYPE* proc;
-
-  public:
-
-  Base(StaticJsonDocument<120>& j_instruction_):proc(new PROCTYPE(j_instruction_)){}
-  ~Base(){}
-  
-  void run(){
-         xTaskCreate( Base<PROCTYPE>::taskMeassure, "Meassureing"   ,  256,  &proc->m_sample, 3,  NULL ); //Task Handle
-         xTaskCreate( Base<PROCTYPE>::taskCheck   , "Runing the job",  256,  &proc->m_flags , 3,   NULL );
-  }
-  
-  void ckeck_it(){ 
-          proc->check_it();
-          return;    
-  }
-
-  void apply (){
-        proc->apply();  
-        return;
-  }
- 
-  void sendData(){
-       proc->sendData();
-  }
-
-  void sendMessageFinished(){
-   //       if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 1 ) == pdTRUE ){
-       proc->sendMessageFinished();
-                                                           //                         xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others. 
-  }
-
-  void removeTasks(){
-       proc->json_data["current"] = 0.0;
-       proc->json_data["voltage"] = 0.0;
-       proc->m_sample.m_voltage=0.0;
-       proc->m_sample.m_current=0.0;
-       proc->m_sample.m_time_interval=0.0;
+    void removeTasks(){
+       json_data["current"] = 0.0;
+       json_data["voltage"] = 0.0;
+       m_sample.m_voltage=0.0;
+       m_sample.m_current=0.0;
+       m_sample.m_time_interval=0.0;
        // vTaskDelete(taskRunHandle);
   }
+  };
 
-  /* ----------------------------      Static functions      --------------------------------- */
-
-   static void taskCheck(PROCTYPE* prc){
-        for (;;){
-          if (prc->m_flags.m_taskStarted && !prc->m_flags.m_taskFinished){
-             prc->check_it();
-             if (!prc->m_flags.m_taskFinished)
-                prc->sendData();
-             else
-                prc->sendMessageFinished();
-          }
-       }
-  }
-
-  static void taskMeassure(PROCTYPE *prc){
-     float averageValue = 500.0;
-     int meassure_interval = 2000;
-     long int sensorValue = 0;  // variable to store the sensor value read
-     long int sensorValue1 = 0;
-
-     float current_voltage = 0.0;
-     float voltage_voltage=0.0;
-     float time = 0;
-
-     for (;;) {
-  //  if (time >= meassure_interval ){
-       sensorValue = 0;
-       sensorValue1 = 0;
-       for (int i = 0; i < averageValue; i++) {
-           sensorValue += analogRead(A0);
-           sensorValue1+= analogRead(A1);
-           delay(0.5);
-       }
-       sensorValue = sensorValue / averageValue;
-       current_voltage = sensorValue * 5.0 / 1024.0;
-       prc->m_sample.m_current = (current_voltage - 2.5) / 0.066;
-       prc->m_sample.m_voltage = 5.0 * sensorValue1 / averageValue / 1024.0; //
-       prc->m_sample.m_time_interval = time*0.001; // in seconds!!
-   // }
-     }
-  }
-
-};
-
-
-
-
-
-
+ arx::vector<ProcHandle*> co;
 // the setup function runs once when you press reset or power the board
 void setup() {
   
   //vector < >
+ 
   // initialize serial communication at 9600 bits per second:
   Serial.begin(9600);
   
@@ -255,18 +225,17 @@ void taskControl( void *pvParameters )  // This is a Task.
   for (;;){
     //  xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;
     // Now set up two Tasks to run independently.
-     if ( command_arrived ){  
-        if (json_ins_arrived["command2"] == "cv"){
-            Base < Procedure<cv> > base_proc_cv (json_ins_arrived);
-            base_proc_cv.run();
+     if ( command_arrived  && co.size()==0 ){  
+        if ( json_ins_arrived["command2"] == "cv" ){
+            Procedure<cv>* proc_handle_cv = new  Procedure<cv> (json_ins_arrived);
+            co.push_back(proc_handle_cv);
+            proc_handle_cv->run();
         //xTaskCreate( taskMeassure, "Meassureing"   ,  256,  NULL, 3,   &taskMeassureHandle ); //Task Handle
         //xTaskCreate( taskRun     , "Runing the job",  256,  NULL,  3,   &taskRunHandle     ); //Task Handle    
-	}
+        command_arrived = false;
+       	}
         //taskStarted = true; 
-        command_arrived = false;          
-        Serial.print("Started!!");      
-        json_instruction = json_ins_arrived;            
-     } 
+     }    
      else if( command_arrived ){
             if (json_ins_arrived["command1"] = "cancel") {} 
             else {Serial.print("A task is running, first cancel the current task!!!");}
