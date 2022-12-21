@@ -103,21 +103,22 @@ template <class PROCTYPE>
   }
  };
 
-struct  ProcHandle {
-  StaticJsonDocument<120> j_status;
- 
-};
+template <typename PROCTYPE>
+ struct Procedure {
 
-template <> struct Procedure<cv>: public ProcHandle {
+ };
+
+ struct ProcHandle {
+   StaticJsonDocument<120> j_status;
    StaticJsonDocument<120> j_instruction, j_data, j_message;
    Sample m_sample;
    Flags  m_flags;
-  Procedure (StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_) {}
-  ~Procedure(){}
+  ProcHandle (StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_) {}
+  ~ProcHandle (){}
 
  void run(){
-         xTaskCreate(Base<Procedure<cv>>::taskMeassure, "Meassureing"   ,  256,  &this->m_sample, 3,  NULL ); //Task Handle
-         xTaskCreate(Base<Procedure<cv>>::taskApplyCheck   , "Runing the job",  256,  &this->m_flags , 3,   NULL );
+         xTaskCreate(Base<ProcHandle>::taskMeassure, "Meassureing"   ,  256,  &this->m_sample, 3,  NULL ); //Task Handle
+         xTaskCreate(Base<ProcHandle>::taskApplyCheck   , "Runing the job",  256,  &this->m_flags , 3,   NULL );
   }
 
   void check_it(){ 
@@ -202,10 +203,10 @@ void taskControl( void *pvParameters )  // This is a Task.
     //  xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;
      if ( command_arrived  && co.size()==0 ){  
         if ( json_ins_arrived["command2"] == "cv" ){
-            Procedure<cv>* proc_handle_cv = new  Procedure<cv> (json_ins_arrived);
-            co.push_back(proc_handle_cv);
-            proc_handle_cv->run();
-        command_arrived = false;
+            ProcHandle* proc_handle = new  ProcHandle (json_ins_arrived);
+            co.push_back(proc_handle);
+            proc_handle->run();
+            command_arrived = false;
        	}
         //taskStarted = true; 
      }    
