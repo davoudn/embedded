@@ -23,9 +23,11 @@ void write_to_dac(int dac_id, float value);
 void cellOff();
 void taskListen( void *pvParameters );
 
-void write_to_dac(int dac_id, float value){
+void write_to_dac(int dac_id, float value)
+{
   // transmit to device #4
   int dummy = (value/10.0)*4095;
+  //Serial.print (value);
   byte myBytes[2];
   myBytes[0] = dummy/256;
   myBytes[1] = dummy%256; 
@@ -78,7 +80,8 @@ template <class PROCTYPE>
              }                
              else{   
                 prc->sendMessageFinished();
-             }                
+                prc->removeTasks();      
+             }                 
           }
           Meassure(prc);
        }
@@ -146,12 +149,12 @@ ProcHandle(){}
    StaticJsonDocument<120> j_instruction, j_data, j_message;
    Sample m_sample;
    Flags  m_flags;
+   TaskHandle_t  taskApplycheckHandle;
   ProcHandle (StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_), m_flags() {}
   ~ProcHandle (){}
 
  void run(){
-        // xTaskCreate(Base<ProcHandle>::taskMeassure, "Meassureing"   ,  256,  this, 3,  NULL ); //Task Handle
-         xTaskCreate(Base<ProcHandle>::taskApplyCheck   , "Runing the job",  256,  this , 3,   NULL );
+         xTaskCreate(Base<ProcHandle>::taskApplyCheck   , "Runing the job",  256,  this , 3,   &taskApplycheckHandle );
   }
 
   void check_it(){ 
@@ -203,11 +206,11 @@ ProcHandle(){}
        m_sample.m_voltage=0.0;
        m_sample.m_current=0.0;
        m_sample.m_time_interval=0.0;
-       // vTaskDelete(taskRunHandle);
+       vTaskDelete(taskApplycheckHandle);
   }
   };
 
- arx::vector<ProcHandle*> co;
+ ProcHandle* co;
 void setup() {
   Serial.begin(9600);
   while (!Serial) {; }
@@ -233,30 +236,27 @@ void taskControl( void *pvParameters )  // This is a Task.
   int count =0;
   //Serial.print(command);
   for (;;){
-     //Serial.print("Started!!");    
-      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;
-    //Serial.print(command);
-    //Serial.print("");
- //count =  command;  
- //Serial.print(count);
- 
-  //Serial.print("Started!!");
-   if ( command_arrived  && no_of_procs==0 ){  
+      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;      
+    //if  (co->)
+    if ( command_arrived  && no_of_procs==0 ){  
         if ( json_ins_arrived["command2"] == "cv" ){
             
             //Serial.print(no_of_procs);
-            ProcHandle* proc_handle = new  ProcHandle (json_ins_arrived);
+            ProcHandle* co = new  ProcHandle (json_ins_arrived);
             //co->push_back(*proc_handle);
-            proc_handle->run();
+            co->run();
             no_of_procs++;            
             command_arrived = false;
        	}
-     //else if( command_arrived ){
-     //       if (json_ins_arrived["command1"] = "cancel") {} 
-     //       else {Serial.print("A task is running, first cancel the current task!!!");}
-     //}// Now free or "Give" the Serial         
-                 
-     } 
+    }
+    else {
+      if( command_arrived && no_of_procs==1 ){
+            if (json_ins_arrived["command1"] = "cancel") {} 
+            else {
+              Serial.print("A task is running, first cancel the current task!!!");
+            }             
+      }
+    } 
 }
 }
 /*     ---------------------------------------------------------------------------- */
