@@ -41,6 +41,7 @@ struct BaseProc{
    virtual void apply(){;}
    virtual void check_it(){;}
    virtual void cellOff(){;}
+   virtual void cellOn(){;}
  };
 
 //

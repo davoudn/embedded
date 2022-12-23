@@ -19,7 +19,10 @@ static void taskControl( PROCHANDLE* prochandle )  // This is a Task.
     }
     else {
       if(  prochandle->command_arrived==1 && prochandle->no_of_procs==1 ){
-            if ( prochandle->j_ins_arrived["command1"] = "cancel") {} 
+            if ( prochandle->j_ins_arrived["command1"] = "cancel") {
+               prochandle->proc->cellOff();
+               prochandle->removeTasks();
+            } 
             else{
               Serial.print("A task is running, first cancel the current task!!!");
             }             
