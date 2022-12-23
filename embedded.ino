@@ -60,34 +60,82 @@ struct Flags{
 //
 struct cv{};
 struct cc{};
-template <class T>
+template <typename PROCTYPE>
 struct Procedure;
+struct ProcHandle;
 
+struct BaseProc{
+  BaseProc( StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_){}
+   StaticJsonDocument<120> j_status;
+   StaticJsonDocument<120> j_instruction;
+   Sample m_sample;
+   Flags  m_flags;
+
+   virtual void apply(){;}
+   virtual void check_it(){;}
+
+ };
+ 
+
+ template <> struct Procedure<cv>:public BaseProc {
+    Procedure<cv>( StaticJsonDocument<120> j_instruction_): BaseProc( j_instruction_) {}
+
+  void check_it(){ 
+          float dummy = j_instruction["field_cutoff"];
+          if (m_sample.m_current * m_sample.m_voltage < dummy * m_sample.m_voltage) {
+                m_flags.m_taskFinished = 1;
+                digitalWrite(50,LOW);
+                cellOff();
+          }
+          
+          return;    
+  }
+
+  void apply (){
+        // j_message["msg"]="jobstarted";
+        // j_message["type"]="message";
+        // serializeJson(j_message, Serial);
+        //Serial.print("dddddddddd");
+         pinMode(22, OUTPUT);
+         digitalWrite(22, HIGH);     
+         float applied_voltage = j_instruction["applied_field"];
+         write_to_dac(96, applied_voltage);
+         pinMode(50, OUTPUT);
+         digitalWrite(50, HIGH);      
+         m_flags.m_taskStarted = 1;
+        return;
+   }
+
+
+  };
+
+ 
  /* ----------------------------      Static functions      --------------------------------- */
-template <class PROCTYPE>
+template <class PROCHANDLE>
  struct Base {
-   static void taskApplyCheck(PROCTYPE* prc){
-        prc->apply();
+   static void taskApplyCheck(PROCHANDLE* prochandle){
+        prochandle->proc->apply();
+      
      //   Serial.print(prc->m_flags.m_taskStarted);
      //   Serial.print(prc->m_flags.m_taskFinished);
         for (;;){
-          if (prc->m_flags.m_taskStarted && !prc->m_flags.m_taskFinished){
+           if (prochandle->proc->m_flags.m_taskStarted && !prochandle->proc->m_flags.m_taskFinished){
             // Serial.print("Checking data\n");
-             prc->check_it();
-             if (!prc->m_flags.m_taskFinished){
+              prochandle->proc->check_it();
+              if (!prochandle->proc->m_flags.m_taskFinished){
             //    Serial.print("Sending data\n");
-                 prc->sendData();
-             }                
-             else{   
-                prc->sendMessageFinished();
-                prc->removeTasks();      
-             }                 
-          }
-          Meassure(prc);
-       }
+                  prochandle->sendData();
+              }                
+              else{   
+                prochandle->sendMessageFinished();
+                prochandle->removeTasks();      
+              }                 
+           }
+          Meassure(prochandle);
+        }
   }
 
-  static void taskMeassure(PROCTYPE *prc){
+  static void taskMeassure(PROCHANDLE* prochandle){
      float averageValue = 500.0;
      int meassure_interval = 2000;
      long int sensorValue = 0;  // variable to store the sensor value read
@@ -108,15 +156,15 @@ template <class PROCTYPE>
        }
        sensorValue = sensorValue / averageValue;
        current_voltage = sensorValue * 5.0 / 1024.0;
-       prc->m_sample.m_current = (current_voltage - 2.5) / 0.066;
-       prc->m_sample.m_voltage = 5.0 * sensorValue1 / averageValue / 1024.0; //
-       prc->m_sample.m_time_interval = time*0.001; // in seconds!!
-       prc->sendData();       
+       prochandle->proc->m_sample.m_current = (current_voltage - 2.5) / 0.066;
+       prochandle->proc->m_sample.m_voltage = 5.0 * sensorValue1 / averageValue / 1024.0; //
+       prochandle->proc->m_sample.m_time_interval = time*0.001; // in seconds!!
+       prochandle->proc->sendData();       
    // }
      }
   }
 
-static void Meassure(PROCTYPE *prc){
+static void Meassure(PROCHANDLE* prochandle){
      int meassure_interval = 2000;
      long int sensorValue = 0, sensorValue1 = 0;
      float current_voltage = 0.0, voltage_voltage=0.0, averageValue = 500.0;
@@ -132,31 +180,30 @@ static void Meassure(PROCTYPE *prc){
        }
        sensorValue = sensorValue / averageValue;
        current_voltage = sensorValue * 5.0 / 1024.0;
-       prc->m_sample.m_current = (current_voltage - 2.5) / 0.066;
-       prc->m_sample.m_voltage = 5.0 * sensorValue1 / averageValue / 1024.0; //
-       prc->m_sample.m_time_interval = time*0.001; // in seconds!!    
+       prochandle->proc->m_sample.m_current = (current_voltage - 2.5) / 0.066;
+       prochandle->proc->m_sample.m_voltage = 5.0 * sensorValue1 / averageValue / 1024.0; //
+       prochandle->proc->m_sample.m_time_interval = time*0.001; // in seconds!!    
   }  
-  template <typename PROCHANDLE>
-void taskControl( PROCHANDLE *prc )  // This is a Task.
+static void taskControl( PROCHANDLE *prochandle )  // This is a Task.
 {  
   int count =0;
   //Serial.print(command);
   for (;;){
       xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;      
     //if  (co->)
-    if ( command_arrived  && no_of_procs==0 ){  
+    if ( command_arrived  && prochandle->no_of_procs==0 ){  
         if ( json_ins_arrived["command2"] == "cv" ){
             
             //Serial.print(no_of_procs);
-            ProcHandle* co = new  ProcHandle (json_ins_arrived);
-            //co->push_back(*proc_handle);
-            co->run();
-            no_of_procs++;            
+            prochandle->proc = new  Procedure<cv> (json_ins_arrived);
+            prochandle->no_of_procs++;         
+            xTaskCreate(Base<ProcHandle>::taskApplyCheck   , "Runing jobs",  256,  prochandle , 3,   &prochandle->taskApplycheckHandle );
+   
             command_arrived = false;
        	}
     }
     else {
-      if( command_arrived && no_of_procs==1 ){
+      if( command_arrived && prochandle->no_of_procs==1 ){
             if (json_ins_arrived["command1"] = "cancel") {} 
             else {
               Serial.print("A task is running, first cancel the current task!!!");
@@ -166,10 +213,9 @@ void taskControl( PROCHANDLE *prc )  // This is a Task.
 }
 }
 /*     ---------------------------------------------------------------------------- */
- template <typename PROCHANDLE>
-void taskListen( PROCHANDLE* prc )  // This is a Task.
+static void taskListen( PROCHANDLE* prochandle )  // This is a Task.
 {  
-    int count =0;
+  int count =0;
   for (;;){
      //if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 1 ) == pdTRUE ){
      while (Serial.available() == 0) {}     //wait for data available
@@ -185,80 +231,31 @@ void taskListen( PROCHANDLE* prc )  // This is a Task.
 }   */
 //Serial.print(signal);   
 
- }
+  }
 }
 
+};
 
-
-
- };
-
-template <typename PROCTYPE>
- struct BaseProc{
-   StaticJsonDocument<120> j_status;
-   StaticJsonDocument<120> j_instruction
-   Sample m_sample;
-   Flags  m_flags;
-
-   virtual void apply(){;}
-   virtual void check_it(){;}
-
- };
- template <typename PROCTYPE>
- struct Procedure;
-
- template typename <>
-  struct Procedure<cv>:public BaseProc {
-  void check_it(){ 
-          float dummy = j_instruction["field_cutoff"];
-          if (m_sample.m_current * m_sample.m_voltage < dummy * m_sample.m_voltage) {
-                m_flags.m_taskFinished = 1;
-                digitalWrite(50,LOW);
-                cellOff();
-          }
-          
-          return;    
-  }
-
-  void apply (){
-         j_message["msg"]="jobstarted";
-         j_message["type"]="message";
-         serializeJson(j_message, Serial);
-        //Serial.print("dddddddddd");
-         pinMode(22, OUTPUT);
-         digitalWrite(22, HIGH);     
-         float applied_voltage = j_instruction["applied_field"];
-         write_to_dac(96, applied_voltage);
-         pinMode(50, OUTPUT);
-         digitalWrite(50, HIGH);      
-         m_flags.m_taskStarted = 1;
-        return;
-   }
-
-
-  };
-
- struct ProcHandle {
-ProcHandle(){}   
+struct ProcHandle {
    StaticJsonDocument<120> j_instruction, j_data, j_message;
-   BaseProc* proc_cv;
+   BaseProc* proc;
    TaskHandle_t  taskApplycheckHandle;
+   int no_of_procs;
   //ProcHandle (StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_), m_flags() {}
-    ProcHandle () {}
+    ProcHandle ():no_of_procs(0) {}
    ~ProcHandle (){}
 
  void run(){
-         xTaskCreate( Base<ProcHandle>::taskControl  ,  "Control",  256,  NULL,  3,  NULL ); //Task Handle
-         xTaskCreate( Base<ProcHandle>::taskListen   ,  "Listen",  256,  NULL,  3,  NULL ); //Task Handle
-         xTaskCreate(Base<ProcHandle>::taskApplyCheck   , "Runing the job",  256,  this , 3,   &taskApplycheckHandle );
+         xTaskCreate( Base<ProcHandle>::taskControl  ,  "Control",  256,  this,  3,  NULL ); //Task Handle
+         xTaskCreate( Base<ProcHandle>::taskListen   ,  "Listen",  256,  this,  3,  NULL ); //Task Handle
   }
 
 
    void sendData(){
          j_data["type"] = "data";
-         j_data["current"] = m_sample.m_current;
-         j_data["voltage"] = m_sample.m_voltage;
-         j_data["time_interval"] = m_sample.m_time_interval;
+         j_data["current"] = proc->m_sample.m_current;
+         j_data["voltage"] = proc->m_sample.m_voltage;
+         j_data["time_interval"] = proc->m_sample.m_time_interval;
          serializeJson(j_data, Serial); 
          Serial.print("#\n");    
     }
@@ -274,14 +271,14 @@ ProcHandle(){}
     void removeTasks(){
        json_data["current"] = 0.0;
        json_data["voltage"] = 0.0;
-       m_sample.m_voltage=0.0;
-       m_sample.m_current=0.0;
-       m_sample.m_time_interval=0.0;
+       proc->m_sample.m_voltage=0.0;
+       proc->m_sample.m_current=0.0;
+       proc->m_sample.m_time_interval=0.0;
        vTaskDelete(taskApplycheckHandle);
   }
   };
 
- ProcHandle* co;
+ ProcHandle* ph;
 void setup() {
   Serial.begin(9600);
   while (!Serial) {; }
@@ -292,9 +289,12 @@ void setup() {
     if ( ( xSerialSemaphore ) != NULL )
       xSemaphoreGive( ( xSerialSemaphore ) );  // Make the Serial Port available for use, by "Giving" the Semaphore.
   }
-  co = new ProcHandle();
-  co->run();
+  ph = new ProcHandle();
+  ph->run();
 }
+
+
+
 
 void loop(){}
 
