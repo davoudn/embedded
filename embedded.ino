@@ -136,27 +136,79 @@ static void Meassure(PROCTYPE *prc){
        prc->m_sample.m_voltage = 5.0 * sensorValue1 / averageValue / 1024.0; //
        prc->m_sample.m_time_interval = time*0.001; // in seconds!!    
   }  
+  template <typename PROCHANDLE>
+void taskControl( PROCHANDLE *prc )  // This is a Task.
+{  
+  int count =0;
+  //Serial.print(command);
+  for (;;){
+      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;      
+    //if  (co->)
+    if ( command_arrived  && no_of_procs==0 ){  
+        if ( json_ins_arrived["command2"] == "cv" ){
+            
+            //Serial.print(no_of_procs);
+            ProcHandle* co = new  ProcHandle (json_ins_arrived);
+            //co->push_back(*proc_handle);
+            co->run();
+            no_of_procs++;            
+            command_arrived = false;
+       	}
+    }
+    else {
+      if( command_arrived && no_of_procs==1 ){
+            if (json_ins_arrived["command1"] = "cancel") {} 
+            else {
+              Serial.print("A task is running, first cancel the current task!!!");
+            }             
+      }
+    } 
+}
+}
+/*     ---------------------------------------------------------------------------- */
+ template <typename PROCHANDLE>
+void taskListen( PROCHANDLE* prc )  // This is a Task.
+{  
+    int count =0;
+  for (;;){
+     //if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 1 ) == pdTRUE ){
+     while (Serial.available() == 0) {}     //wait for data available
+      json_string_instruction = Serial.readString();  //read until timeout
+    //  xSemaphoreGive( xSerialSemaphore );  
+      Serial.print(json_string_instruction); 
+      str = json_string_instruction; 
+      deserializeJson(json_ins_arrived, str);
+      command_arrived= true;
+/*if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 1 ) == pdTRUE ){      
+      command = 1;
+      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;
+}   */
+//Serial.print(signal);   
+
+ }
+}
+
+
+
+
  };
 
 template <typename PROCTYPE>
- struct Procedure {
-
- };
-
- struct ProcHandle {
-ProcHandle(){}   
+ struct BaseProc{
    StaticJsonDocument<120> j_status;
-   StaticJsonDocument<120> j_instruction, j_data, j_message;
+   StaticJsonDocument<120> j_instruction
    Sample m_sample;
    Flags  m_flags;
-   TaskHandle_t  taskApplycheckHandle;
-  ProcHandle (StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_), m_flags() {}
-  ~ProcHandle (){}
 
- void run(){
-         xTaskCreate(Base<ProcHandle>::taskApplyCheck   , "Runing the job",  256,  this , 3,   &taskApplycheckHandle );
-  }
+   virtual void apply(){;}
+   virtual void check_it(){;}
 
+ };
+ template <typename PROCTYPE>
+ struct Procedure;
+
+ template typename <>
+  struct Procedure<cv>:public BaseProc {
   void check_it(){ 
           float dummy = j_instruction["field_cutoff"];
           if (m_sample.m_current * m_sample.m_voltage < dummy * m_sample.m_voltage) {
@@ -182,6 +234,25 @@ ProcHandle(){}
          m_flags.m_taskStarted = 1;
         return;
    }
+
+
+  };
+
+ struct ProcHandle {
+ProcHandle(){}   
+   StaticJsonDocument<120> j_instruction, j_data, j_message;
+   BaseProc* proc_cv;
+   TaskHandle_t  taskApplycheckHandle;
+  //ProcHandle (StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_), m_flags() {}
+    ProcHandle () {}
+   ~ProcHandle (){}
+
+ void run(){
+         xTaskCreate( Base<ProcHandle>::taskControl  ,  "Control",  256,  NULL,  3,  NULL ); //Task Handle
+         xTaskCreate( Base<ProcHandle>::taskListen   ,  "Listen",  256,  NULL,  3,  NULL ); //Task Handle
+         xTaskCreate(Base<ProcHandle>::taskApplyCheck   , "Runing the job",  256,  this , 3,   &taskApplycheckHandle );
+  }
+
 
    void sendData(){
          j_data["type"] = "data";
@@ -221,9 +292,8 @@ void setup() {
     if ( ( xSerialSemaphore ) != NULL )
       xSemaphoreGive( ( xSerialSemaphore ) );  // Make the Serial Port available for use, by "Giving" the Semaphore.
   }
-
-   xTaskCreate( taskControl  ,  "Control",  256,  NULL,  3,  NULL ); //Task Handle
-   xTaskCreate( taskListen   ,  "Listen",  256,  NULL,  3,  NULL ); //Task Handle
+  co = new ProcHandle();
+  co->run();
 }
 
 void loop(){}
@@ -231,55 +301,6 @@ void loop(){}
 /*--------------------------------------------------*/
 /*---------------------- Tasks ---------------------*/
 /*--------------------------------------------------*/
-void taskControl( void *pvParameters )  // This is a Task.
-{  
-  int count =0;
-  //Serial.print(command);
-  for (;;){
-      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;      
-    //if  (co->)
-    if ( command_arrived  && no_of_procs==0 ){  
-        if ( json_ins_arrived["command2"] == "cv" ){
-            
-            //Serial.print(no_of_procs);
-            ProcHandle* co = new  ProcHandle (json_ins_arrived);
-            //co->push_back(*proc_handle);
-            co->run();
-            no_of_procs++;            
-            command_arrived = false;
-       	}
-    }
-    else {
-      if( command_arrived && no_of_procs==1 ){
-            if (json_ins_arrived["command1"] = "cancel") {} 
-            else {
-              Serial.print("A task is running, first cancel the current task!!!");
-            }             
-      }
-    } 
-}
-}
-/*     ---------------------------------------------------------------------------- */
-void taskListen( void *pvParameters )  // This is a Task.
-{  
-    int count =0;
-  for (;;){
-     //if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 1 ) == pdTRUE ){
-     while (Serial.available() == 0) {}     //wait for data available
-      json_string_instruction = Serial.readString();  //read until timeout
-    //  xSemaphoreGive( xSerialSemaphore );  
-      Serial.print(json_string_instruction); 
-      str = json_string_instruction; 
-      deserializeJson(json_ins_arrived, str);
-      command_arrived= true;
-/*if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 1 ) == pdTRUE ){      
-      command = 1;
-      xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;
-}   */
-//Serial.print(signal);   
-
- }
-}
 
 void cellOff()
 {
