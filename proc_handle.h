@@ -86,10 +86,10 @@ struct ProcHandle {
    }
 
    void sendData(){
-         j_data["type"] = "data";
-         j_data["current"] = proc->m_sample.m_current;
-         j_data["voltage"] = proc->m_sample.m_voltage;
-         j_data["time_interval"] = proc->m_sample.m_time_interval;
+         j_data["t"] = "d";
+         j_data["c"] = proc->m_sample.m_current;
+         j_data["v"] = proc->m_sample.m_voltage;
+         j_data["tm_int"] = proc->m_sample.m_time_interval;
          serializeJson(j_data, Serial); 
          Serial.print("#\n");    
     }
