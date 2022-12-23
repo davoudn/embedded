@@ -28,6 +28,12 @@ struct Sample{
 struct Flags{
    Flags():m_taskStarted(0),m_taskFinished(0){}
    Flags(int m1, int m2):m_taskStarted(m1),m_taskFinished(m2){}
+   void reset()
+   {
+      m_taskStarted=0;
+      m_taskFinished=0;
+      return;
+   }
   int m_taskStarted;
   int m_taskFinished;
 };

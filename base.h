@@ -6,15 +6,15 @@ template <class PROCHANDLE>
    static void taskApplyCheck(PROCHANDLE* prochandle){
         prochandle->proc->apply();
         for (;;){
-           if (prochandle->proc->m_flags.m_taskStarted && !prochandle->proc->m_flags.m_taskFinished){
+           if (prochandle->proc->m_flags.m_taskStarted==1 && prochandle->proc->m_flags.m_taskFinished==0){
+              Meassure(prochandle); 
+              prochandle->sendData();
             // Serial.print("Checking data\n");
               prochandle->proc->check_it();
-              if (!prochandle->proc->m_flags.m_taskFinished){
+             // if (!prochandle->proc->m_flags.m_taskFinished){
             //    Serial.print("Sending data\n");
-                  prochandle->sendData();
+             //     prochandle->sendData();
               }                                
-           Meassure(prochandle); 
-           }
         }
     }
 
