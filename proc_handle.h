@@ -68,19 +68,23 @@ struct ProcHandle {
   }
 
    void addProcess(){
-        no_of_procs=1;    
         if (j_ins_arrived["c2"] == "cv"){
            proc = new Procedure<cv>();
            createTask();
            setInstruction();
+           no_of_procs=1;   
         } 
         else if (j_ins_arrived["c2"] == "cc"){
            proc = new Procedure<cc>();
            createTask();
            setInstruction();
+           no_of_procs=1;   
+        }
+        else if  (j_ins_arrived["c2"] == "cancel") {
+             Serial.println("No process to cancel.");
         }
         else {
-             Serial.println("NOT a regular command, please inspect if everything is correct.");
+           Serial.println("NOT a regular command, please inspect if everything is correct.");
         }
         
        // procs_list.push_back(new  Procedure<cv> (j_ins_arrived));
