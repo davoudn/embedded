@@ -51,7 +51,8 @@ struct BaseProc{
    virtual void cellOn(){;}
    void setInstruction( StaticJsonDocument<120> j_instruction_)
    {
-   j_instruction=j_instruction_;
+     j_instruction=j_instruction_;
+     return;
    }
  };
 

@@ -11,14 +11,10 @@ static void taskControl( PROCHANDLE* prochandle )
     xSemaphoreGive( prochandle->xSerialSemaphore );    
     if (  prochandle->command_arrived==1  && prochandle->no_of_procs==0 ){  
         Serial.print("before cv cv.\n");
-        if ( prochandle->j_ins_arrived["c2"] == "cv" ){
-         // BaseProc* h = new Procedure<cv>();
-         // prochandle->procs_list.push_back(h);
-          prochandle->addProcess(); //procs_list.push_back(new  Procedure<cv> (prochandle->j_ins_arrived));
-          Serial.print(prochandle->no_of_procs);//prochandle->no_of_procs);
-          prochandle->createTask();
-         //  prochandle->command_arrived = 0;
-       	}
+        //if ( prochandle->j_ins_arrived["c2"] == "cv" ){
+         prochandle->addProcess();  
+         // Serial.print(prochandle->no_of_procs);//prochandle->no_of_procs);
+       	//}
         prochandle->command_arrived = 0;
     }
     else {    
@@ -54,7 +50,7 @@ struct ProcHandle {
    int command_arrived;
    int no_of_procs;
   //ProcHandle (StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_), m_flags() {}
-    ProcHandle ():no_of_procs(0),command_arrived(0), proc (new Procedure<cv>())
+    ProcHandle ():no_of_procs(0), command_arrived(0), proc (NULL) //new Procedure<cv>())
     {
        if ( xSerialSemaphore == NULL ){
           xSerialSemaphore = xSemaphoreCreateMutex();  // Create a mutex semaphore we will use to manage the Serial Port
@@ -73,8 +69,20 @@ struct ProcHandle {
 
    void addProcess(){
         no_of_procs=1;    
-       //  proc = new Procedure<cv>();
-        setInstruction();
+        if (j_ins_arrived["c2"] == "cv"){
+           proc = new Procedure<cv>();
+           createTask();
+           setInstruction();
+        } 
+        else if (j_ins_arrived["c2"] == "cc"){
+           proc = new Procedure<cc>();
+           createTask();
+           setInstruction();
+        }
+        else {
+             Serial.println("NOT a regular command, please inspect if everything is correct.");
+        }
+        
        // procs_list.push_back(new  Procedure<cv> (j_ins_arrived));
    }
 
@@ -105,7 +113,8 @@ struct ProcHandle {
     void removeTasks(){
        vTaskDelete(taskApplycheckHandle);
        no_of_procs=0;
-       proc->m_flags.reset();
+       delete proc;//->m_flags.reset();
+       proc = NULL;
        taskApplycheckHandle = NULL;
        Serial.println("Everything were cleared! :-)!\n");
     }
