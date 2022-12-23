@@ -35,7 +35,13 @@ static void taskControl( PROCHANDLE* prochandle )
             }            
       }
     } 
+  // check if task is finished, then clear the task.
+    if (prochandle->proc->m_flags.m_taskStarted && prochandle->proc->m_flags.m_taskFinished){
+        prochandle->removeTasks();
+        prochandle->sendMessageFinished();
+    }
   }
+
 }
 };
 //TaskHandle_t taskRunHandle; 

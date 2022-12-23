@@ -12,13 +12,9 @@ template <class PROCHANDLE>
               if (!prochandle->proc->m_flags.m_taskFinished){
             //    Serial.print("Sending data\n");
                   prochandle->sendData();
-              }                
-              else{   
-                prochandle->sendMessageFinished();
-                prochandle->removeTasks(); 
-              }                 
+              }                                
+           Meassure(prochandle); 
            }
-          Meassure(prochandle);
         }
     }
 
