@@ -33,7 +33,8 @@ struct Flags{
 };
 
 struct BaseProc{
-  BaseProc( StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_){}
+  BaseProc ( StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_){}
+  BaseProc () {}
    StaticJsonDocument<120> j_status;
    StaticJsonDocument<120> j_instruction;
    Sample m_sample;
@@ -42,6 +43,10 @@ struct BaseProc{
    virtual void check_it(){;}
    virtual void cellOff(){;}
    virtual void cellOn(){;}
+   void setInstruction( StaticJsonDocument<120> j_instruction_)
+   {
+   j_instruction=j_instruction_;
+   }
  };
 
 //

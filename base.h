@@ -74,6 +74,7 @@ static void Meassure(PROCHANDLE* prochandle){
 /*     ---------------------------------------------------------------------------- */
 static void taskListen( PROCHANDLE* prochandle )  // This is a Task.
 {  
+  Serial.print("Listening to you my boss, give me your order :-) !");
   String json_string_instruction = "", str = ""; 
   for (;;){
      //if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 1 ) == pdTRUE ){

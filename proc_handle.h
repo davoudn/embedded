@@ -4,28 +4,35 @@
 
 template <class PROCHANDLE>
 struct tmp{
-static void taskControl( PROCHANDLE* prochandle )  // This is a Task.
+static void taskControl( PROCHANDLE* prochandle ) 
 {  
   for (;;){
-      xSemaphoreGive( prochandle->xSerialSemaphore ); // Now free or "Give" the Serial Port for others.;      
-    //if  (co->)
+    xSemaphoreGive( prochandle->xSerialSemaphore );    
     if (  prochandle->command_arrived==1  && prochandle->no_of_procs==0 ){  
-        if ( prochandle->j_ins_arrived["command2"] == "cv" ){
-            prochandle->proc = new  Procedure<cv> (prochandle->j_ins_arrived);
-            prochandle->no_of_procs++;         
-            xTaskCreate(Base<PROCHANDLE>::taskApplyCheck   , "Runing jobs",  256,  prochandle , 3,   &prochandle->taskApplycheckHandle );
-             prochandle->command_arrived = 0;
+        Serial.print("before cv cv.\n");
+        if ( prochandle->j_ins_arrived["c2"] == "cv" ){
+          
+         //prochandle->proc = new  Procedure<cv> (prochandle->j_ins_arrived);
+          prochandle->no_of_procs+=1;         
+          prochandle->setInstruction();
+          Serial.print(prochandle->no_of_procs);//prochandle->no_of_procs);
+          xTaskCreate(Base<PROCHANDLE>::taskApplyCheck   , "Runing jobs",  256,  prochandle , 3,   &prochandle->taskApplycheckHandle );
+         //  prochandle->command_arrived = 0;
        	}
+        prochandle->command_arrived = 0;
     }
-    else {
+    else {    
       if(  prochandle->command_arrived==1 && prochandle->no_of_procs==1 ){
-            if ( prochandle->j_ins_arrived["command1"] = "cancel") {
-               prochandle->proc->cellOff();
-               prochandle->removeTasks();
+            prochandle->command_arrived=0;
+           //Serial.print("A task is running, first cancel the current task!!!");        
+            if ( prochandle->j_ins_arrived["c2"] == "cancel") {
+               Serial.print("The task was clanceled by user!");
+            //   prochandle->proc->cellOff();
+              // prochandle->removeTasks();
             } 
             else{
               Serial.print("A task is running, first cancel the current task!!!");
-            }             
+            }            
       }
     } 
   }
@@ -40,19 +47,21 @@ struct ProcHandle {
    int command_arrived;
    int no_of_procs;
   //ProcHandle (StaticJsonDocument<120> j_instruction_):j_instruction(j_instruction_), m_flags() {}
-    ProcHandle ():no_of_procs(0),command_arrived(0) 
+    ProcHandle ():no_of_procs(0),command_arrived(0), proc (new Procedure<cv>())
     {
        if ( xSerialSemaphore == NULL ){
           xSerialSemaphore = xSemaphoreCreateMutex();  // Create a mutex semaphore we will use to manage the Serial Port
           if ( ( xSerialSemaphore ) != NULL )
           xSemaphoreGive( ( xSerialSemaphore ) );  // Make the Serial Port available for use, by "Giving" the Semaphore.
        }
+
     }
    ~ProcHandle (){}
 
   void run(){
-         xTaskCreate( tmp<ProcHandle>::taskControl  ,  "Control",  256,  this,  3,  NULL ); //Task Handle
-         xTaskCreate( Base<ProcHandle>::taskListen   ,  "Listen",  256,  this,  3,  NULL ); //Task Handle
+            xTaskCreate( Base<ProcHandle>::taskListen   ,  "Listen",  256,  this,  3,  NULL ); //Task Handle 
+            xTaskCreate( tmp<ProcHandle>::taskControl  ,  "Control",  256,  this,  3,  NULL ); //Task Handle
+        
   }
 
    void sendData(){
@@ -67,16 +76,20 @@ struct ProcHandle {
     void sendMessageFinished(){
      //       if ( xSemaphoreTake( xSerialSemaphore, ( TickType_t ) 1 ) == pdTRUE ){
          j_message["type"] = "message"  ;     
-         j_message["msg"] = "jobdone"   ;  
+         j_message["msg"]  = "jobdone"   ;  
          serializeJson(j_message, Serial);    
          Serial.print("#\n");    
                                                            //                         xSemaphoreGive( xSerialSemaphore ); // Now free or "Give" the Serial Port for other                                                      //   }            
     }
-
+    void setInstruction()
+    {
+      proc->setInstruction(j_ins_arrived);
+    }
     void removeTasks(){
        vTaskDelete(taskApplycheckHandle);
        no_of_procs--;
        delete proc;
        taskApplycheckHandle = NULL;
+       Serial.println("Everything were cleared! :-)!");
     }
   };

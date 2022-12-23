@@ -2,7 +2,7 @@
 
 template <> struct Procedure<cv>:public BaseProc {
   Procedure( StaticJsonDocument<120> j_instruction_): BaseProc( j_instruction_) {}
-
+  Procedure(): BaseProc() {}
   void check_it(){ 
           float dummy = j_instruction["field_cutoff"];
           if (m_sample.m_current * m_sample.m_voltage < dummy * m_sample.m_voltage) {
