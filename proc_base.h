@@ -6,12 +6,12 @@
 
 void write_to_dac(int dac_id, float value)
 {
-  // transmit to device #4
+  Wire.begin();
   int dummy = (value/10.0)*4095;
   byte myBytes[2];
   myBytes[0] = dummy/256;
   myBytes[1] = dummy%256; 
-  Wire.beginTransmission(96);
+  Wire.beginTransmission(dac_id);
   Wire.write(myBytes[0]);  
   Wire.write(myBytes[1]);            // sends instruction byte  
   Wire.endTransmission();    // stop transmitting

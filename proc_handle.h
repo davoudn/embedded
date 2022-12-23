@@ -10,11 +10,7 @@ static void taskControl( PROCHANDLE* prochandle )
   for (;;){
     xSemaphoreGive( prochandle->xSerialSemaphore );    
     if (  prochandle->command_arrived==1  && prochandle->no_of_procs==0 ){  
-        Serial.print("before cv cv.\n");
-        //if ( prochandle->j_ins_arrived["c2"] == "cv" ){
-         prochandle->addProcess();  
-         // Serial.print(prochandle->no_of_procs);//prochandle->no_of_procs);
-       	//}
+        prochandle->addProcess();  
         prochandle->command_arrived = 0;
     }
     else {    
@@ -37,7 +33,6 @@ static void taskControl( PROCHANDLE* prochandle )
         //prochandle->sendMessageFinished();
     }
   }
-
 }
 };
 //TaskHandle_t taskRunHandle; 
