@@ -4,9 +4,15 @@
 template <class PROCHANDLE>
  struct Base {
    static void taskApplyCheck(PROCHANDLE* prochandle){
+     TickType_t xLastWakeTime;
+     const TickType_t xFrequency = 1;
+
+     // Initialise the xLastWakeTime variable with the current time.
+     xLastWakeTime = xTaskGetTickCount();
         prochandle->proc->apply();
         for (;;){
            if (prochandle->proc->m_flags.m_taskStarted==1 && prochandle->proc->m_flags.m_taskFinished==0){
+              vTaskDelayUntil( &xLastWakeTime, xFrequency );
               Meassure(prochandle); 
               prochandle->sendData();
             // Serial.print("Checking data\n");
@@ -50,7 +56,7 @@ template <class PROCHANDLE>
 static void Meassure(PROCHANDLE* prochandle){
      int meassure_interval = 2000;
      long int sensorValue = 0, sensorValue1 = 0;
-     float current_voltage = 0.0, voltage_voltage=0.0, averageValue = 500.0;
+     float current_voltage = 0.0, voltage_voltage=0.0, averageValue = 1;
      float time = 0;
       //  if (time >= meassure_interval ){
        sensorValue = 0;
@@ -58,7 +64,7 @@ static void Meassure(PROCHANDLE* prochandle){
        for (int i = 0; i < averageValue; i++) {
            sensorValue += analogRead(A0);
            sensorValue1+= analogRead(A1);
-           delay(0.5);
+           delay(0.1);
        }
        sensorValue = sensorValue / averageValue;
        current_voltage = sensorValue * 5.0 / 1024.0;
@@ -87,3 +93,22 @@ static void taskListen( PROCHANDLE* prochandle )  // This is a Task.
 /*     ---------------------------------------------------------------------------- */
 };
 
+/*
+// Perform an action every 10 ticks.
+ void vTaskFunction( void * pvParameters )
+ {
+ TickType_t xLastWakeTime;
+ const TickType_t xFrequency = 10;
+
+     // Initialise the xLastWakeTime variable with the current time.
+     xLastWakeTime = xTaskGetTickCount();
+
+     for( ;; )
+     {
+         // Wait for the next cycle.
+         vTaskDelayUntil( &xLastWakeTime, xFrequency );
+
+         // Perform action here.
+     }
+ }
+*/
