@@ -5,7 +5,7 @@ template <class PROCHANDLE>
  struct Base {
    static void taskApplyCheck(PROCHANDLE* prochandle){
      TickType_t xLastWakeTime;
-     const TickType_t xFrequency = 1;
+     const TickType_t xFrequency = 10;
 
      // Initialise the xLastWakeTime variable with the current time.
      xLastWakeTime = xTaskGetTickCount();

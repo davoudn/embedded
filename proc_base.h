@@ -18,6 +18,9 @@ void write_to_dac(int dac_id, float value)
     return;
 }
 
+template <typename T> int sgn(T val) {
+    return (T(0) < val) - (val < T(0));
+}
 
 struct Sample{
   float m_voltage;
@@ -45,6 +48,7 @@ struct BaseProc{
    StaticJsonDocument<120> j_instruction;
    Sample m_sample;
    Flags  m_flags;
+   int sgn_appliedField, sgn_cutoffField;     
    virtual void apply(){;}
    virtual void check_it(){;}
    virtual void cellOff(){;}
@@ -52,6 +56,10 @@ struct BaseProc{
    void setInstruction( StaticJsonDocument<120> j_instruction_)
    {
      j_instruction=j_instruction_;
+       float tmp1 =  j_instruction["applied_field"];     
+       float tmp2 =  j_instruction["field_cutoff"];
+     sgn_appliedField = sgn(tmp1);
+     sgn_cutoffField  = sgn(tmp2);     
      return;
    }
  };
